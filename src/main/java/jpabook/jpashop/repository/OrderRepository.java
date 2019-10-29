@@ -1,6 +1,8 @@
 package jpabook.jpashop.repository;
 
-import jpabook.jpashop.domain.Member;
+import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQueryFactory;
+import jpabook.jpashop.domain.*;
 import jpabook.jpashop.domain.Order;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
@@ -17,6 +19,8 @@ import java.util.List;
 public class OrderRepository {
 
     private final EntityManager em;
+    private final QOrder order = QOrder.order;
+    private final QMember member = QMember.member;
 
     public void save(Order order){
         em.persist(order);
@@ -24,6 +28,33 @@ public class OrderRepository {
 
     public Order findOne(Long id){
         return em.find(Order.class, id);
+    }
+
+    public List<Order> findAllByQuerydsl(OrderSearch orderSearch){
+        JPAQueryFactory query = new JPAQueryFactory(em);
+        List<Order> list =
+                query.selectFrom(order)
+                        .join(order.member, member)
+                        .where(eqOrderStatus(orderSearch.getOrderStatus())
+                                ,eqMemberName(orderSearch.getMemberName()))
+                        .limit(1000)
+                        .fetch();
+
+        return list;
+    }
+
+    private BooleanExpression eqOrderStatus(OrderStatus orderStatus) {
+        if (StringUtils.isEmpty(orderStatus)) {
+            return null;
+        }
+        return order.status.eq(orderStatus);
+    }
+
+    private BooleanExpression eqMemberName(String memberName) {
+        if (StringUtils.isEmpty(memberName)) {
+            return null;
+        }
+        return member.name.like(memberName);
     }
 
     public List<Order> findAllByCriteria(OrderSearch orderSearch) {
